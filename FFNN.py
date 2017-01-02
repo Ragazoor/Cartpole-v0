@@ -14,7 +14,7 @@ class FFNN(object):
         self.nHiddenNodes = nmrOfNodes[1]
         self.nOutputNodes = nmrOfNodes[2]
 
-        self.lr = tf.Variable(lr, name = 'lr')
+        self.lr = lr#tf.Variable(lr, name = 'lr')
         self.seed = seed
         self.wr = wr 
         
@@ -40,7 +40,10 @@ class FFNN(object):
         self.dif = self.Qtar - self.Q
         self.dif = tf.square(self.dif)
         self.mse = tf.reduce_mean(self.dif)
-        self.optimiser = tf.train.GradientDescentOptimizer(self.lr)
+#        self.optimiser = tf.train.GradientDescentOptimizer(self.lr) works like mjeeeh
+
+#       A new test is made with the AdamOptimizer, which automatically lowers lr
+        self.optimiser = tf.train.AdamOptimizer(learning_rate = self.lr)
         self.train = self.optimiser.minimize(self.mse, var_list=self.vars)
         
         self.error_list = []
@@ -76,7 +79,7 @@ class FFNN(object):
 
     def plot_error(self):
         plt.plot([np.mean(self.error_list[i-50:i]) for i in range(len(self.error_list))])
-        plt.show()
+        
 
 
 

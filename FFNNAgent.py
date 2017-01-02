@@ -32,12 +32,16 @@ class FFNNAgent(object):
         self.n_updates_per_episode = hyperparams['n_updates_per_episode']
         self.max_memory_len = hyperparams['max_memory_len']
         self.n_iter = hyperparams['n_iter']
+        self.n_episodes_per_print = hyperparams['n_episodes_per_print']
+        self.net_hold_eps = hyperparams['net_hold_epsilon']
+        self.net_hold_lr = hyperparams['net_hold_lr']
 
         node_array = [self.n_input_nodes, self.n_hidden_nodes, self.n_output_nodes]        
         self.net = FFNN(node_array, self.learning_rate, self.seed, self.init_net_wr)
         self.net.initSession()
 
         self.memory = []
+        self.reward_list = []
         
         np.random.seed(self.seed)
 
@@ -61,20 +65,20 @@ class FFNNAgent(object):
             self.target_net = copy.copy(self.net)
 
 
-        if i_episode % 5 == 0 :
-
+        if i_episode % self.net_hold_eps == 0:
             if self.epsilon > self.epsilon_min:
                 self.epsilon *= self.epsilon_decay_rate
                 print 'epsilon:',self.epsilon
-
+        
+        if i_episode % self.net_hold_lr == 0 and i_episode != 0:
             if self.learning_rate > self.learning_rate_min:
                 self.learning_rate *= self.learning_rate_decay
-                self.net.set_lr(self.learning_rate)
-                print 'learning_rate:',self.learning_rate
+                #self.net.set_lr(self.learning_rate)
+                print 'learning_rate:',self.net.lr
                         
-        if memory_len > self.batch_size:
-            if memory_len < 50:
-                n_updates = 1
+        if memory_len == self.max_memory_len:
+            if i_episode < 5:
+                n_updates = 1 # Don't overtrain on the first (inevitebly bad) episodes 
             else:
                 n_updates = self.n_updates_per_episode
             for _ in range(n_updates):
@@ -93,10 +97,10 @@ class FFNNAgent(object):
                     
                     states.append(s)
                     Q_target.append(all_targets)
-                if i_episode % 100 == 0:
+                if i_episode % self.n_episodes_per_print == 0:
                     # PRINTS Q                
                     print all_targets
-                    print a
+                    
             
             self.net.gd(x_batch = np.asmatrix(states), Q_batch = np.asmatrix(Q_target))
             
@@ -107,8 +111,9 @@ class FFNNAgent(object):
         state = env.reset()
         sars_tuples = []
         t = 0
+        tot_reward = 0
         while not done and t < self.n_steps:
-            if i_episode %5 == 0 and rend:
+            if i_episode %self.n_episodes_per_print == 0 and rend:
                 env.render()            
             action = self.take_action(env, state)
             sars = [state, action]
@@ -116,24 +121,31 @@ class FFNNAgent(object):
             sars += [r,state, done]
             sars_tuples.append(tuple(sars))
             t += 1
+            tot_reward += r
         
-        return sars_tuples, t
+        return sars_tuples, t, tot_reward
         
 
     def optimize_episodes(self, env, rend = False):
         t_avg = 0
+        r_avg = 0
         for i_episode in range(self.n_iter):
-            sars_tuples, t = self.create_episode(env, i_episode, rend)
+            sars_tuples, t, tot_reward = self.create_episode(env, i_episode, rend)
             self.optimize(sars_tuples, i_episode)
             t_avg += t
-            if i_episode %100 == 0:
-                print 'tot_reward',t+1
+            r_avg += tot_reward
+            self.reward_list.append(tot_reward)
+            if i_episode %self.n_episodes_per_print == 0:
+                print 'Episode Length',t+1
+                print 'Total reward', tot_reward                
                 print i_episode
 
         print 'Average Length :',t_avg/float(self.n_iter)
+        print 'Average Reward :',r_avg/float(self.n_iter)
         
 
 
-
+    def plot_reward(self):
+        plt.plot([np.mean(self.reward_list[i-50:i]) for i in range(len(self.reward_list))])
 
 

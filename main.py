@@ -20,48 +20,62 @@ def main_FFNNAgent():
     logger.setLevel(logging.INFO)
     
     # Init and constants:
+    
     env = gym.make('CartPole-v0')
     outdir = '/Results/ffnn_agent_run'
+#    env = gym.wrappers.Monitor('LunarLander-v2', outdir)
+
+    print env.observation_space
+    print env.action_space
+
 
     # Hyperparams:  learning options, network structure, number iterations & steps,
     hyperparams = {}
-    # ----------- NOT worth playing with:
-    hyperparams['gamma'] = 0.95
+    # ----------- Net Parameters:
+    hyperparams['gamma'] = 0.99  #0.99
     hyperparams['n_input_nodes'] = 4
-    hyperparams['n_hidden_nodes'] = 4
+    hyperparams['n_hidden_nodes'] = 4 #4
     hyperparams['n_output_nodes'] = 2
     hyperparams['n_steps'] = 200
     hyperparams['seed'] = 13  # 13
     # ----------- worth playing with:  (current best settings in comments)
     hyperparams['init_net_wr'] = 0.05  # 0.05
-    hyperparams['batch_size'] = 50  # 50
-    hyperparams['epsilon'] = 1.0  # 1 - starting value
-    hyperparams['epsilon_min'] = 0.11  # 0.1  - always keep exploring?
-    hyperparams['epsilon_decay_rate'] = 0.95  # 95    # 0.98         ~.995 over 500 its leaves it at 0.08
-    # -- observation is that exploration/exploitation trade off is very important
+    hyperparams['batch_size'] = 50  # 100
+    hyperparams['epsilon'] = 1  # 1 - starting value
+    hyperparams['epsilon_min'] = 0.1  # 0 - Need to explore alot so it doesn't stick in local max
+    hyperparams['epsilon_decay_rate'] = 0.995  # 995  
+#   ~.99 over 200 leaves it 0.1339 ~.995 over 500 its leaves it at 0.08
+ 
+   # --- exploration/exploitation trade off is very important EVERYTHING IS UNCERTAIN
     hyperparams['target_net_hold_epsiodes'] = 1  # 1
-    hyperparams['learning_rate'] = 0.15        # 0.15
-    hyperparams['learning_rate_min'] = 11 # 0.001
-    hyperparams['learning_rate_decay'] = 0.9  # 0.9
+    hyperparams['learning_rate'] = 0.1     # 0.1
+    hyperparams['learning_rate_min'] = 1 #0.01 # 11 or 0.01
+    hyperparams['learning_rate_decay'] = 0.5  # 0.5
     hyperparams['n_updates_per_episode'] = 1  # 1 - means pick X random minibatches, doing GradDescent on each
-    hyperparams['max_memory_len'] = 100  # 100 - number of (s,a,r,s',done) tuples -- ~big seems bad
-    hyperparams['n_iter'] = 1000  # 1000
-    # ------------------------------------  BEST SETTINGS GIVE: test mean: 200 +- 0
+    hyperparams['max_memory_len'] = 100  # 500 - number of (s,a,r,s',done) tuples
+    hyperparams['n_iter'] = 3000  # 1000
+    hyperparams['n_episodes_per_print'] = 100
+    hyperparams['net_hold_epsilon'] = 5 # 5
+    hyperparams['net_hold_lr'] = 2000
+    # ------------ BEST SETTINGS GIVE: test mean: 200 +- 0
 
     # FFNN agent:
     agent = FFNNAgent(hyperparams)
     
-    
-
     # starts to train agent
-    agent.optimize_episodes(env)
+    agent.optimize_episodes(env, rend = True)
     agent.net.plot_error()    
-    
-    print agent.net.lr
+    agent.plot_reward()
+    plt.show()
     # test to see how it goes
-    agent.episode = 0
+    agent.epsilon = 0
     agent.n_iter = 100
+    agent.n_episodes_per_print = 5
+    #agent.net.set_lr(0.0001)
     agent.optimize_episodes(env,rend = True)
+
+    agent.net.print_params()
+
 if __name__ == '__main__':
     main_FFNNAgent()
 
