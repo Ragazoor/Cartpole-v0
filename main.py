@@ -26,36 +26,39 @@ def main_FFNNAgent():
 #    env = gym.wrappers.Monitor('LunarLander-v2', outdir)
 
     print env.observation_space
+    print env.observation_space.high
+    print env.observation_space.low
     print env.action_space
 
 
     # Hyperparams:  learning options, network structure, number iterations & steps,
     hyperparams = {}
     # ----------- Net Parameters:
-    hyperparams['gamma'] = 0.99  #0.99
+    hyperparams['gamma'] = 0.99  #0.9
     hyperparams['n_input_nodes'] = 4
-    hyperparams['n_hidden_nodes'] = 4 #4
+    hyperparams['n_hidden_nodes'] = 4 #10
     hyperparams['n_output_nodes'] = 2
     hyperparams['n_steps'] = 200
     hyperparams['seed'] = 13  # 13
     # ----------- worth playing with:  (current best settings in comments)
     hyperparams['init_net_wr'] = 0.05  # 0.05
-    hyperparams['batch_size'] = 50  # 100
+    hyperparams['batch_size'] = 100  # 250
     hyperparams['epsilon'] = 1  # 1 - starting value
     hyperparams['epsilon_min'] = 0.1  # 0 - Need to explore alot so it doesn't stick in local max
     hyperparams['epsilon_decay_rate'] = 0.995  # 995  
 #   ~.99 over 200 leaves it 0.1339 ~.995 over 500 its leaves it at 0.08
  
    # --- exploration/exploitation trade off is very important EVERYTHING IS UNCERTAIN
-    hyperparams['target_net_hold_epsiodes'] = 1  # 1
-    hyperparams['learning_rate'] = 0.1     # 0.1
+    hyperparams['target_net_hold_epsiodes'] = 1  # 5
+    hyperparams['learning_rate'] = 0.1     # 0.2
     hyperparams['learning_rate_min'] = 1 #0.01 # 11 or 0.01
     hyperparams['learning_rate_decay'] = 0.5  # 0.5
     hyperparams['n_updates_per_episode'] = 1  # 1 - means pick X random minibatches, doing GradDescent on each
-    hyperparams['max_memory_len'] = 100  # 500 - number of (s,a,r,s',done) tuples
+    hyperparams['nmr_decimals_tiles'] = 3 # the resolution of the tiles are 10^-1 
+    hyperparams['max_memory_len'] = 200  # 500 - number of (s,a,r,s',done) tuples
     hyperparams['n_iter'] = 3000  # 1000
-    hyperparams['n_episodes_per_print'] = 100
-    hyperparams['net_hold_epsilon'] = 5 # 5
+    hyperparams['n_episodes_per_print'] = 300
+    hyperparams['net_hold_epsilon'] = 4 # 5 or 10
     hyperparams['net_hold_lr'] = 2000
     # ------------ BEST SETTINGS GIVE: test mean: 200 +- 0
 

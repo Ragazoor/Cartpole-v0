@@ -35,6 +35,7 @@ class FFNNAgent(object):
         self.n_episodes_per_print = hyperparams['n_episodes_per_print']
         self.net_hold_eps = hyperparams['net_hold_epsilon']
         self.net_hold_lr = hyperparams['net_hold_lr']
+        self.nmr_decimals_tiles = hyperparams['nmr_decimals_tiles']
 
         node_array = [self.n_input_nodes, self.n_hidden_nodes, self.n_output_nodes]        
         self.net = FFNN(node_array, self.learning_rate, self.seed, self.init_net_wr)
@@ -77,7 +78,7 @@ class FFNNAgent(object):
                 print 'learning_rate:',self.net.lr
                         
         if memory_len == self.max_memory_len:
-            if i_episode < 5:
+            if i_episode < 1:
                 n_updates = 1 # Don't overtrain on the first (inevitebly bad) episodes 
             else:
                 n_updates = self.n_updates_per_episode
@@ -105,10 +106,14 @@ class FFNNAgent(object):
             self.net.gd(x_batch = np.asmatrix(states), Q_batch = np.asmatrix(Q_target))
             
 
+    def round_2_tile(self, state):
+        return np.round(state, decimals = self.nmr_decimals_tiles)
 
     def create_episode(self, env, i_episode, rend):
         done = False        
         state = env.reset()
+        # Round state to tile
+        state = self.round_2_tile(state)
         sars_tuples = []
         t = 0
         tot_reward = 0
@@ -118,6 +123,8 @@ class FFNNAgent(object):
             action = self.take_action(env, state)
             sars = [state, action]
             state, r, done, info = env.step(action)
+            # Round state to tile            
+            state = self.round_2_tile(state)
             sars += [r,state, done]
             sars_tuples.append(tuple(sars))
             t += 1
