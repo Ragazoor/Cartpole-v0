@@ -1,6 +1,7 @@
 import numpy as np
 from FFNN import *
 import copy
+from math import log, sqrt
 
 # init
 
@@ -43,17 +44,15 @@ class FFNNAgent(object):
 
         self.memory = []
         self.reward_list = []
-        
         np.random.seed(self.seed)
 
-    def take_action(self, env, state):
-        r = np.random.uniform()
-        if r < 1-self.epsilon:
-            Q = self.net.get_Q(np.matrix(state))[0]
-            action = np.argmax(Q)
-        else:
-            action = env.action_space.sample()
-        return action
+        # Monte Carlo Q-tree (That's a fantastic name!)
+        self.tree_nodes = {} # Each nodes is reached with a key, a state + action
+        self.C = hyperparams['C']
+        self.score = {} # Score for each Q-state in tree
+        self.plays = {} # Number of times a Q-state have been played 
+        self.depth = 0
+        self.max_depth = hyperparams['MCTS_max_depth']
         
 
     def optimize(self,sars_tuples, i_episode):
@@ -86,7 +85,7 @@ class FFNNAgent(object):
                 idx_memory_batch = np.random.choice(range(memory_len), size = self.batch_size, replace = False)
 
                 states = []
-                Q_target = []       
+                Q_target = []
                 for idx_memory in idx_memory_batch:
                     s, a, r, s_prime, done = self.memory[idx_memory]
                     
@@ -99,39 +98,77 @@ class FFNNAgent(object):
                     states.append(s)
                     Q_target.append(all_targets)
                 if i_episode % self.n_episodes_per_print == 0:
-                    # PRINTS Q                
+                    # PRINTS Q
                     print all_targets
                     
-            
             self.net.gd(x_batch = np.asmatrix(states), Q_batch = np.asmatrix(Q_target))
             
 
     def round_2_tile(self, state):
         return np.round(state, decimals = self.nmr_decimals_tiles)
 
+
+    def take_action(self, env, state, t, expand, visited_states):
+        action_list = range(self.n_output_nodes)
+        state_cpy = state[:] # copy state
+        state_cpy = self.round_2_tile(state_cpy) # round state 2 tile
+        state_cpy = state_cpy.tolist() # matrix to list
+        state_cpy = tuple(state_cpy) # list to tuple
+        if all(self.plays.get((state_cpy,a)) for a in action_list) and t < self.max_depth:            
+            # If we have stats on all of the legal moves here, use them.
+            log_total = log(sum(self.plays[(state_cpy, a)] for a in action_list))
+            
+            _, action = max(((self.score[(state_cpy, a)] / self.plays[(state_cpy, a)]) + self.C * sqrt(log_total / self.plays[(state_cpy, a)]), a) for a in action_list)
+        else:
+            # Otherwise, use neural net
+            r = np.random.uniform()
+            if r < 1-self.epsilon:
+                Q = self.net.get_Q(np.matrix(state))[0]
+                action = np.argmax(Q)
+            else:
+                action = env.action_space.sample()
+        
+        visited_states.add((state_cpy, action)) # add state action pair to visited states
+        # If we have not expanded yet, expand
+        if expand and (state_cpy, action) not in self.plays:
+            expand = False
+            self.plays[(state_cpy, action)] = 0
+            self.score[(state_cpy, action)] = 0
+            if t > self.depth and t < self.max_depth :
+                self.depth = t
+
+        return action, expand
+
+
     def create_episode(self, env, i_episode, rend):
-        done = False        
+        done = False
+        visited_states = set()
         state = env.reset()
-        # Round state to tile
-        state = self.round_2_tile(state)
         sars_tuples = []
         t = 0
         tot_reward = 0
+        expand = True
         while not done and t < self.n_steps:
             if i_episode %self.n_episodes_per_print == 0 and rend:
                 env.render()            
-            action = self.take_action(env, state)
+            action, expand= self.take_action(env, state, t, expand, visited_states)
+
             sars = [state, action]
             state, r, done, info = env.step(action)
-            # Round state to tile            
-            state = self.round_2_tile(state)
             sars += [r,state, done]
             sars_tuples.append(tuple(sars))
             t += 1
             tot_reward += r
         
+        for state, a in visited_states:
+            if (state,a) not in self.plays:
+                continue
+            self.plays[(state,a)] += 1
+            self.score[(state,a)] += tot_reward
+            #if i_episode % self.n_episodes_per_print == 0:
+                #print 'Score and plays for', state, ':', self.score[(state,a)] / self.plays[(state,a)],':', self.plays[(state,a)]
         return sars_tuples, t, tot_reward
-        
+
 
     def optimize_episodes(self, env, rend = False):
         t_avg = 0
@@ -144,13 +181,12 @@ class FFNNAgent(object):
             self.reward_list.append(tot_reward)
             if i_episode %self.n_episodes_per_print == 0:
                 print 'Episode Length',t+1
-                print 'Total reward', tot_reward                
+                print 'Total reward', tot_reward
+                print 'Depth', self.depth        
                 print i_episode
 
         print 'Average Length :',t_avg/float(self.n_iter)
         print 'Average Reward :',r_avg/float(self.n_iter)
-        
-
 
     def plot_reward(self):
         plt.plot([np.mean(self.reward_list[i-50:i]) for i in range(len(self.reward_list))])
