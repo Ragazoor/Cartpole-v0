@@ -30,7 +30,8 @@ def main_FFNNAgent():
     print env.observation_space.low
     print env.action_space
     
-    
+
+
     # Hyperparams:  learning options, network structure, number iterations & steps,
     hyperparams = {}
     # ----------- Net Parameters:
@@ -50,15 +51,15 @@ def main_FFNNAgent():
  
    # --- exploration/exploitation trade off is very important EVERYTHING IS UNCERTAIN
     hyperparams['target_net_hold_epsiodes'] = 1  # 5
-    hyperparams['learning_rate'] = 0.01     # 0.05
+    hyperparams['learning_rate'] = 0.1     # 0.05
     hyperparams['learning_rate_min'] = 1 #0.01 # 11 or 0.01
     hyperparams['learning_rate_decay'] = 0.5  # 0.5
     hyperparams['n_updates_per_episode'] = 1  # 1 - means pick X random minibatches, doing GradDescent on each
     hyperparams['nmr_decimals_tiles'] = 2 # the resolution of the tiles are 10^-1 
     hyperparams['max_memory_len'] = 500  # 500 - number of (s,a,r,s',done) tuples
     hyperparams['n_iter'] = 3000  # 1000
-    hyperparams['n_episodes_per_print'] = 300
-    hyperparams['net_hold_epsilon'] = 4 # 5 or 10
+    hyperparams['n_episodes_per_print'] = 100
+    hyperparams['net_hold_epsilon'] = 1 # 5 or 10
     hyperparams['net_hold_lr'] = 2000
     hyperparams['C'] = 1.4 # Higher values encourages exploration
     hyperparams['MCTS_max_depth'] = 0 # Determines how deep the tree may be

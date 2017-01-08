@@ -53,6 +53,9 @@ class FFNNAgent(object):
         self.plays = {} # Number of times a Q-state have been played 
         self.depth = 0
         self.max_depth = hyperparams['MCTS_max_depth']
+
+        # List that will be filled with scaling factor for input
+        self.scaling_factor = np.array([0.0 for _ in range(self.n_input_nodes)])
         
 
     def optimize(self,sars_tuples, i_episode):
@@ -100,6 +103,7 @@ class FFNNAgent(object):
                 if i_episode % self.n_episodes_per_print == 0:
                     # PRINTS Q
                     print all_targets
+                    print a
                     
             self.net.gd(x_batch = np.asmatrix(states), Q_batch = np.asmatrix(Q_target))
             
@@ -139,11 +143,24 @@ class FFNNAgent(object):
 
         return action, expand
 
+    def scale_input(self, state):
+        #print state
+        for idx, e in np.ndenumerate(state):
+            if abs(e) > self.scaling_factor[idx]:
+                self.scaling_factor[idx] = abs(e)
+            
+            state[idx] /= self.scaling_factor[idx] 
+        #print self.scaling_factor
+        #print state
+        #print '---------'
 
     def create_episode(self, env, i_episode, rend):
         done = False
         visited_states = set()
         state = env.reset()
+        # Scale input to same range
+        self.scale_input(state)    
+        
         sars_tuples = []
         t = 0
         tot_reward = 0
@@ -152,13 +169,21 @@ class FFNNAgent(object):
             if i_episode %self.n_episodes_per_print == 0 and rend:
                 env.render()            
             action, expand= self.take_action(env, state, t, expand, visited_states)
-
             sars = [state, action]
             state, r, done, info = env.step(action)
+
+            # Scale input to same range
+            self.scale_input(state)
+            
             sars += [r,state, done]
             sars_tuples.append(tuple(sars))
             t += 1
             tot_reward += r
+#            if i_episode % self.n_episodes_per_print == 0:
+#                print state
+#                print self.scaling_factor
+#                print '------------------------------------------------'
+            
         
         for state, a in visited_states:
             if (state,a) not in self.plays:
